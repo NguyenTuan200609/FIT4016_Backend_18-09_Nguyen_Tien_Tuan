@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Chat - Giao diện Premium</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        dark: '#0f172a',
+                        darker: '#020617',
+                        primary: '#6366f1', // Indigo
+                        primaryHover: '#4f46e5',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Tùy chỉnh thanh cuộn (Scrollbar) */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+        /* Hiệu ứng kính mờ */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        /* Hiệu ứng xuất hiện của tin nhắn */
+        .msg-enter {
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        @keyframes slideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Nền động (Animated Background) */
+        .bg-animated {
+            background: linear-gradient(-45deg, #020617, #0f172a, #1e1b4b, #0f172a);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    </style>
+</head>
+<body class="bg-animated text-white h-screen w-full flex items-center justify-center overflow-hidden font-sans selection:bg-primary selection:text-white">
+
+    <!-- Container chính -->
+    <div class="glass-panel w-full max-w-5xl h-[85vh] rounded-3xl flex overflow-hidden relative mx-4">
+        
+        <!-- ================= SIDEBAR ================= -->
+        <aside class="w-80 border-r border-white/10 flex flex-col bg-white/[0.02] relative z-10">
+            
+            <!-- Logo & Title -->
+            <div class="p-6 pb-4">
+                <div class="flex items-center gap-3 text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
+                    <i class="ph-fill ph-chat-circle-dots text-indigo-400"></i>
+                    NovaChat
+                </div>
+                <!-- Fake Search Bar -->
+                <div class="mt-6 relative">
+                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" placeholder="Tìm kiếm..." class="w-full glass-input text-sm rounded-xl py-2.5 pl-10 pr-4 text-white placeholder-gray-400 outline-none transition-all">
+                </div>
+            </div>
+
+            <!-- Danh sách phòng chat -->
+            <div class="flex-1 overflow-y-auto px-3 pb-4" id="roomList">
+                <!-- Render bằng JavaScript -->
+            </div>
+
+            <!-- Khu vực chọn người dùng (Tester Panel tích hợp) -->
+            <div class="p-4 border-t border-white/10 bg-black/20 backdrop-blur-md">
+                <p class="text-xs text-gray-400 mb-2 font-medium uppercase tracking-wider">Đóng vai người dùng:</p>
+                <div class="relative">
+                    <i class="ph-fill ph-user-circle absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-lg"></i>
+                    <select id="userSelector" onchange="changeContextUser()" class="w-full appearance-none glass-input text-sm rounded-xl py-2 pl-10 pr-8 text-white outline-none cursor-pointer">
+                        <option value="u1" class="bg-dark text-white">Người dùng A (Admin)</option>
+                        <option value="u2" class="bg-dark text-white">Người dùng B (Member)</option>
+                    </select>
+                    <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ================= CHAT AREA ================= -->
+        <main class="flex-1 flex flex-col relative bg-gradient-to-br from-white/[0.01] to-transparent">
+            
+            <!-- Header Phòng Chat -->
+            <header class="h-20 px-8 border-b border-white/10 flex items-center justify-between bg-white/[0.02] backdrop-blur-sm z-10">
+                <div class="flex items-center gap-4">
+                    <div id="headerIcon" class="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30">
+                        <i class="ph-fill ph-users"></i>
+                    </div>
+                    <div>
+                        <h2 id="headerRoomName" class="text-lg font-semibold tracking-wide">Chọn một cuộc trò chuyện</h2>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="headerRoomType" class="text-xs text-gray-400 font-medium">Đang trực tuyến</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button class="w-10 h-10 rounded-full glass-input flex items-center justify-center text-gray-300 hover:text-white transition"><i class="ph ph-phone text-lg"></i></button>
+                    <button onclick="startVideoCall()" class="w-10 h-10 rounded-full glass-input flex items-center justify-center text-gray-300 hover:text-white hover:text-emerald-400 transition"><i class="ph ph-video-camera text-lg"></i></button>
+                    <button class="w-10 h-10 rounded-full glass-input flex items-center justify-center text-gray-300 hover:text-white transition"><i class="ph ph-dots-three text-lg"></i></button>
+                </div>
+            </header>
+            
+            <!-- Khu vực hiển thị tin nhắn -->
+            <div class="flex-1 overflow-y-auto p-8 flex flex-col gap-6" id="chatBox">
+                <!-- Tin nhắn render tại đây -->
+            </div>
+
+            <!-- Khu vực nhập tin nhắn -->
+            <div id="inputAreaWrapper" class="p-6 bg-gradient-to-t from-dark/80 to-transparent">
+                <!-- Vùng nhập liệu bình thường -->
+                <div id="inputArea" class="relative flex items-end gap-3 glass-panel rounded-2xl p-2 pr-3">
+                    <button class="p-3 text-gray-400 hover:text-indigo-400 transition rounded-xl"><i class="ph ph-paperclip text-xl"></i></button>
+                    <input type="text" id="messageInput" placeholder="Nhập tin nhắn của bạn..." class="flex-1 bg-transparent border-none text-white placeholder-gray-500 text-sm py-3 outline-none" onkeypress="handleEnter(event)">
+                    <button class="p-3 text-gray-400 hover:text-pink-400 transition rounded-xl"><i class="ph ph-smiley text-xl"></i></button>
+                    <button id="sendBtn" onclick="sendMessage()" class="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white p-3 rounded-xl shadow-lg shadow-indigo-500/25 transition-all transform hover:scale-105 active:scale-95">
+                        <i class="ph-fill ph-paper-plane-right text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Thông báo cấm chat (Dành cho Kênh 1:N) -->
+                <div id="permissionNotice" class="hidden items-center justify-center gap-2 glass-panel rounded-2xl p-4 text-gray-400 text-sm italic">
+                    <i class="ph-fill ph-lock-key text-red-400 text-lg"></i>
+                    Chỉ quản trị viên mới có quyền gửi tin nhắn vào kênh này.
+                </div>
+            </div>
+
+            <!-- Voice Call UI (Ẩn mặc định) -->
+            <div id="voiceCallUI" class="absolute inset-0 rounded-3xl bg-gradient-to-b from-indigo-900/90 to-black/95 flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+                <div class="flex flex-col items-center gap-6">
+                    <!-- Avatar người nhận -->
+                    <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center text-5xl shadow-2xl shadow-blue-500/50 animate-pulse">
+                        <i class="ph-fill ph-user"></i>
+                    </div>
+                    
+                    <!-- Tên người nhận -->
+                    <div class="text-center">
+                        <h3 id="voiceCallName" class="text-3xl font-bold">Đang gọi...</h3>
+                        <p id="voiceCallDuration" class="text-blue-200 mt-2 text-lg">00:00</p>
+                    </div>
+
+                    <!-- Status text -->
+                    <p id="voiceCallStatus" class="text-gray-300 text-sm">Đang kết nối...</p>
+                </div>
+
+                <!-- Thanh công cụ Voice Call -->
+                <div class="absolute bottom-0 w-full p-8 flex justify-center gap-6 bg-gradient-to-t from-black/80 to-transparent">
+                    <button onclick="toggleVoiceAudio()" id="btnVoiceAudio" class="w-14 h-14 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-2xl transition-all">
+                        <i class="ph-fill ph-microphone"></i>
+                    </button>
+                    <button onclick="endVoiceCall()" class="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(239,68,68,0.5)] transition-all">
+                        <i class="ph-fill ph-phone-disconnect"></i>
+                    </button>
+                    <button class="w-14 h-14 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-2xl transition-all opacity-50">
+                        <i class="ph-fill ph-speaker-high"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Video Call UI (Ẩn mặc định) -->
+            <div id="videoCallUI" class="absolute inset-0 rounded-3xl bg-black/95 flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+                <!-- Video người dùng hiện tại -->
+                <video id="localVideo" autoplay muted playsinline class="w-full h-full object-cover rounded-3xl"></video>
+                
+                <!-- Thanh công cụ Video Call -->
+                <div class="absolute bottom-0 w-full p-6 pb-8 flex justify-center gap-6 bg-gradient-to-t from-black/80 to-transparent">
+                    <button onclick="toggleAudio()" id="btnAudio" class="w-14 h-14 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-2xl transition-all">
+                        <i class="ph-fill ph-microphone"></i>
+                    </button>
+                    <button onclick="toggleVideo()" id="btnVideo" class="w-14 h-14 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-2xl transition-all">
+                        <i class="ph-fill ph-video-camera"></i>
+                    </button>
+                    <button onclick="endVideoCall()" class="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(239,68,68,0.5)] transition-all">
+                        <i class="ph-fill ph-phone-disconnect"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        /**
+         * BƯỚC 1: THIẾT KẾ DATABASE MÔ PHỎNG (MOCK DATA)
+         */
+        const DB_USERS = {
+            u1: { id: 'u1', name: 'Người dùng A' },
+            u2: { id: 'u2', name: 'Người dùng B' },
+            bot_alice: { id: 'bot_alice', name: 'Tuất Minh' },
+            bot_bob: { id: 'bot_bob', name: 'Tuấn' },
+        };
+
+        let currentUser = DB_USERS['u1']; 
+
+        const DB_ROOMS = [
+            { id: 'r1', type: '1:1', name: 'Chat với Tuất Minh', icon: 'ph-user', desc: 'Trực tuyến 1 giờ trước', admins: [] },
+            { id: 'r2', type: 'N:N', name: 'Nhóm Lập Trình', icon: 'ph-users-three', desc: '12 thành viên', admins: [] },
+            { id: 'r3', type: '1:N', name: 'Kênh Thông Báo Cty', icon: 'ph-megaphone', desc: 'Kênh truyền thông 1 chiều', admins: ['u1'] }
+        ];
+
+        let DB_MESSAGES = [
+            { roomId: 'r1', senderId: 'bot_alice', text: 'Xin chào! Giao diện mới đẹp quá nhỉ? ✨', time: '08:00' },
+            { roomId: 'r2', senderId: 'bot_bob', text: 'Mọi người đã update tính năng WebSockets chưa?', time: '09:15' },
+            { roomId: 'r3', senderId: 'u1', text: 'Thông báo: Cuộc họp lúc 3h chiều nay đổi sang phòng họp trực tuyến nhé mọi người.', time: '10:00' }
+        ];
+
+        let currentActiveRoomId = null;
+
+        /**
+         * BƯỚC 2: LOGIC RENDER GIAO DIỆN (FRONTEND)
+         */
+        function renderRooms() {
+            const roomListEl = document.getElementById('roomList');
+            roomListEl.innerHTML = '';
+
+            DB_ROOMS.forEach(room => {
+                const isActive = room.id === currentActiveRoomId;
+                
+                // Styling cho phòng đang active
+                const activeClasses = isActive 
+                    ? 'bg-white/10 border-indigo-500/50 shadow-inner' 
+                    : 'border-transparent hover:bg-white/5';
+                
+                const iconColor = isActive ? 'text-indigo-400' : 'text-gray-400';
+
+                const itemHTML = `
+                    <div onclick="switchRoom('${room.id}')" class="group flex items-center gap-4 p-3 mb-2 rounded-2xl cursor-pointer border transition-all duration-300 ${activeClasses}">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-12 h-12 rounded-full glass-input flex items-center justify-center text-xl transition group-hover:scale-105 ${iconColor}">
+                                <i class="ph-fill ${room.icon}"></i>
+                            </div>
+                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></span>
+                        </div>
+                        <div class="flex-1 overflow-hidden">
+                            <div class="flex justify-between items-baseline mb-1">
+                                <h4 class="font-semibold text-white truncate text-sm">${room.name}</h4>
+                                <span class="text-[10px] text-gray-500">10:00</span>
+                            </div>
+                            <p class="text-xs text-gray-400 truncate">Mô hình: ${room.type}</p>
+                        </div>
+                    </div>
+                `;
+                roomListEl.insertAdjacentHTML('beforeend', itemHTML);
+            });
+        }
+
+        function switchRoom(roomId) {
+            currentActiveRoomId = roomId;
+            renderRooms(); 
+            
+            const room = DB_ROOMS.find(r => r.id === roomId);
+            
+            // Cập nhật Header
+            document.getElementById('headerRoomName').innerText = room.name;
+            document.getElementById('headerRoomType').innerText = room.desc;
+            
+            // Cập nhật icon trên header
+            const headerIcon = document.getElementById('headerIcon');
+            headerIcon.innerHTML = `<i class="ph-fill ${room.icon}"></i>`;
+
+            // Đổi màu header icon dựa theo loại phòng cho sinh động
+            if(room.type === '1:1') headerIcon.className = 'w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-lg shadow-pink-500/30 bg-gradient-to-tr from-pink-500 to-rose-400 text-white';
+            else if(room.type === '1:N') headerIcon.className = 'w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-lg shadow-amber-500/30 bg-gradient-to-tr from-amber-500 to-orange-400 text-white';
+            else headerIcon.className = 'w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30 bg-gradient-to-tr from-indigo-500 to-purple-500 text-white';
+
+            checkPermissions(room);
+            renderMessages();
+        }
+
+        function checkPermissions(room) {
+            const inputArea = document.getElementById('inputArea');
+            const notice = document.getElementById('permissionNotice');
+
+            if (room.type === '1:N' && !room.admins.includes(currentUser.id)) {
+                inputArea.classList.add('hidden');
+                inputArea.classList.remove('flex');
+                notice.classList.remove('hidden');
+                notice.classList.add('flex');
+            } else {
+                inputArea.classList.remove('hidden');
+                inputArea.classList.add('flex');
+                notice.classList.add('hidden');
+                notice.classList.remove('flex');
+                document.getElementById('messageInput').focus();
+            }
+        }
+
+        function renderMessages() {
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML = '';
+
+            const roomMessages = DB_MESSAGES.filter(m => m.roomId === currentActiveRoomId);
+
+            roomMessages.forEach((msg, index) => {
+                const isSelf = msg.senderId === currentUser.id;
+                const senderName = isSelf ? 'Bạn' : (DB_USERS[msg.senderId]?.name || 'Unknown');
+                
+                // Animation delay cho từng tin nhắn lúc load
+                const delay = index * 0.05;
+
+                let msgHTML = '';
+                if (isSelf) {
+                    msgHTML = `
+                        <div class="flex flex-col items-end w-full msg-enter" style="animation-delay: ${delay}s">
+                            <span class="text-[11px] text-gray-400 mb-1.5 mr-1">${msg.time}</span>
+                            <div class="bg-gradient-to-tr from-indigo-600 to-purple-500 text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-lg shadow-indigo-500/20 max-w-[75%] text-sm leading-relaxed">
+                                ${msg.text}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Avatar giả lập cho người khác
+                    const initial = senderName.charAt(0);
+                    msgHTML = `
+                        <div class="flex flex-col items-start w-full msg-enter" style="animation-delay: ${delay}s">
+                            <span class="text-[11px] text-gray-400 mb-1.5 ml-14">${senderName} • ${msg.time}</span>
+                            <div class="flex items-end gap-3 max-w-[75%]">
+                                <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-300 flex-shrink-0 border border-white/5">
+                                    ${initial}
+                                </div>
+                                <div class="glass-panel text-gray-100 px-5 py-3 rounded-2xl rounded-tl-sm text-sm leading-relaxed">
+                                    ${msg.text}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                chatBox.insertAdjacentHTML('beforeend', msgHTML);
+            });
+
+            // Scroll to bottom
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        /**
+         * BƯỚC 3: LOGIC GIAO TIẾP VÀ XỬ LÝ (MÔ PHỎNG BACKEND / SOCKET.IO)
+         */
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        function sendMessage() {
+            const inputEl = document.getElementById('messageInput');
+            const text = inputEl.value.trim();
+            if (!text || !currentActiveRoomId) return;
+
+            const room = DB_ROOMS.find(r => r.id === currentActiveRoomId);
+
+            // Backend Check
+            if (room.type === '1:N' && !room.admins.includes(currentUser.id)) {
+                return; // Tránh gửi lậu
+            }
+
+            const newMsg = {
+                roomId: currentActiveRoomId,
+                senderId: currentUser.id,
+                text: text,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            DB_MESSAGES.push(newMsg);
+            inputEl.value = '';
+            
+            renderMessages();
+            simulateAutoReply(room.type, currentActiveRoomId);
+        }
+
+        function simulateAutoReply(roomType, roomId) {
+            if (roomType === '1:N') return; 
+
+            // Hiển thị trạng thái "Đang gõ..." giả lập (ở mức cơ bản) có thể phát triển thêm
+            
+            setTimeout(() => {
+                let botId = roomType === '1:1' ? 'bot_alice' : 'bot_bob';
+                
+                const replies = [
+                    "Ồ, tính năng này hay quá!",
+                    "Giao diện nhìn xịn xò thật sự. Đỉnh!",
+                    "Tôi đồng ý với ý kiến của bạn.",
+                    "Đã lưu thông tin. Cảm ơn nhé 🚀",
+                ];
+                let randomText = replies[Math.floor(Math.random() * replies.length)];
+
+                const botMsg = {
+                    roomId: roomId,
+                    senderId: botId,
+                    text: randomText,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+
+                DB_MESSAGES.push(botMsg);
+                
+                if (currentActiveRoomId === roomId) {
+                    renderMessages();
+                }
+            }, 1800);
+        }
+
+        function changeContextUser() {
+            const selectedUserId = document.getElementById('userSelector').value;
+            currentUser = DB_USERS[selectedUserId];
+            
+            if (currentActiveRoomId) {
+                switchRoom(currentActiveRoomId);
+            }
+        }
+
+        /**
+         * VIDEO CALL FUNCTIONS
+         */
+        let localStream;
+        const localVideo = document.getElementById('localVideo');
+        const videoCallUI = document.getElementById('videoCallUI');
+        const btnAudio = document.getElementById('btnAudio');
+        const btnVideo = document.getElementById('btnVideo');
+
+        // Hàm bắt đầu Video Call
+        async function startVideoCall() {
+            videoCallUI.classList.add('active');
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" },
+                    audio: true 
+                });
+                
+                localVideo.srcObject = localStream;
+                videoCallUI.style.opacity = '1';
+                videoCallUI.style.pointerEvents = 'auto';
+                
+            } catch (error) {
+                console.error("Lỗi truy cập Camera/Mic:", error);
+                alert("Không thể truy cập Camera/Microphone. Vui lòng cấp quyền!");
+                endVideoCall();
+            }
+        }
+
+        // Tắt/Bật Mic
+        function toggleAudio() {
+            if(localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                audioTrack.enabled = !audioTrack.enabled;
+                
+                btnAudio.innerHTML = audioTrack.enabled 
+                    ? '<i class="ph-fill ph-microphone"></i>' 
+                    : '<i class="ph-fill ph-microphone-slash text-red-400"></i>';
+                btnAudio.classList.toggle('bg-slate-700', audioTrack.enabled);
+                btnAudio.classList.toggle('bg-red-900/50', !audioTrack.enabled);
+            }
+        }
+
+        // Tắt/Bật Camera
+        function toggleVideo() {
+            if(localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                videoTrack.enabled = !videoTrack.enabled;
+                
+                btnVideo.innerHTML = videoTrack.enabled 
+                    ? '<i class="ph-fill ph-video-camera"></i>' 
+                    : '<i class="ph-fill ph-video-camera-slash text-red-400"></i>';
+                btnVideo.classList.toggle('bg-slate-700', videoTrack.enabled);
+                btnVideo.classList.toggle('bg-red-900/50', !videoTrack.enabled);
+            }
+        }
+
+        // Kết thúc cuộc gọi
+        function endVideoCall() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            localVideo.srcObject = null;
+            videoCallUI.style.opacity = '0';
+            videoCallUI.style.pointerEvents = 'none';
+            videoCallUI.classList.remove('active');
+        }
+
+        /**
+         * VOICE CALL FUNCTIONS
+         */
+        let voiceStream;
+        let voiceCallActive = false;
+        let voiceCallTimer = 0;
+        let voiceCallInterval = null;
+        const voiceCallUI = document.getElementById('voiceCallUI');
+        const btnVoiceAudio = document.getElementById('btnVoiceAudio');
+
+        async function startVoiceCall() {
+            // Kiểm tra xem có phòng được chọn không
+            if (!currentActiveRoomId) {
+                alert("Vui lòng chọn một cuộc trò chuyện trước!");
+                return;
+            }
+
+            const room = DB_ROOMS.find(r => r.id === currentActiveRoomId);
+            voiceCallUI.classList.add('active');
+
+            try {
+                // Chỉ yêu cầu microphone, không cần camera
+                voiceStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: true,
+                    video: false
+                });
+                
+                voiceCallActive = true;
+                voiceCallUI.style.opacity = '1';
+                voiceCallUI.style.pointerEvents = 'auto';
+                
+                // Cập nhật thông tin
+                document.getElementById('voiceCallName').innerText = room.name;
+                document.getElementById('voiceCallStatus').innerText = 'Đang gọi...';
+                
+                // Bắt đầu đếm thời gian
+                startVoiceCallTimer();
+                
+                // Mô phỏng: Sau 2 giây sẽ "kết nối thành công"
+                setTimeout(() => {
+                    if (voiceCallActive) {
+                        document.getElementById('voiceCallStatus').innerText = 'Đã kết nối';
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error("Lỗi truy cập Microphone:", error);
+                alert("Không thể truy cập Microphone. Vui lòng cấp quyền!");
+                endVoiceCall();
+            }
+        }
+
+        function startVoiceCallTimer() {
+            voiceCallTimer = 0;
+            voiceCallInterval = setInterval(() => {
+                voiceCallTimer++;
+                const minutes = Math.floor(voiceCallTimer / 60);
+                const seconds = voiceCallTimer % 60;
+                document.getElementById('voiceCallDuration').innerText = 
+                    `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function toggleVoiceAudio() {
+            if (voiceStream) {
+                const audioTrack = voiceStream.getAudioTracks()[0];
+                audioTrack.enabled = !audioTrack.enabled;
+                
+                btnVoiceAudio.innerHTML = audioTrack.enabled 
+                    ? '<i class="ph-fill ph-microphone"></i>' 
+                    : '<i class="ph-fill ph-microphone-slash text-red-400"></i>';
+                btnVoiceAudio.classList.toggle('bg-slate-700', audioTrack.enabled);
+                btnVoiceAudio.classList.toggle('bg-red-900/50', !audioTrack.enabled);
+            }
+        }
+
+        function endVoiceCall() {
+            voiceCallActive = false;
+            
+            if (voiceStream) {
+                voiceStream.getTracks().forEach(track => track.stop());
+            }
+            
+            if (voiceCallInterval) {
+                clearInterval(voiceCallInterval);
+            }
+            
+            voiceCallUI.style.opacity = '0';
+            voiceCallUI.style.pointerEvents = 'none';
+            voiceCallUI.classList.remove('active');
+        }
+
+        // Khởi chạy ứng dụng ban đầu
+        switchRoom('r1'); // Chọn phòng đầu tiên làm mặc định
+
+    </script>
+</body>
+</html>
